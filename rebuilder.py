@@ -75,8 +75,15 @@ for entry in source.entries:
 
 	r = requests.get(entry.link)
 	linked_html = ElementTree.fromstring(fix_entities(r.content))
-	linked_body = linked_html.find('body')
-	ElementTree.SubElement(item, 'description').extend(list(linked_body))
 
-ElementTree.ElementTree(root).write(sys.argv[2], 'utf-8')
+	try:
+		content = ElementTree.tostring(linked_html.find(sys.argv[2]))
+	except AttributeError:
+		content = 'XPath expression returned no result'
+	except SyntaxError, e:
+		content = 'Invalid XPath expression ({})'.format(e)
+
+	ElementTree.SubElement(item, 'description').text = content
+
+ElementTree.ElementTree(root).write(sys.argv[3], 'utf-8')
 
