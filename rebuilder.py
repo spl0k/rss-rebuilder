@@ -1,8 +1,9 @@
 # coding: utf-8
 
-import sys, time
-import feedparser
+import sys, time, re
+import feedparser, requests
 from xml.etree import ElementTree
+from htmlentitydefs import name2codepoint
 
 channel_required = [
 	'title',
@@ -46,6 +47,12 @@ def putback_elems(source, elems, xml_elem, required = False):
 		if required or hasattr(source, attr):
 			ElementTree.SubElement(xml_elem, tag).text = getattr(source, attr)
 
+def fix_entities(text):
+	text = re.sub('&([a-z][a-z0-9]+);', lambda match: '&#{};'.format(name2codepoint[match.group(1)]), text)
+	text = re.sub('&([_a-z0-9]+)([^;])', lambda match: '&amp;{}{}'.format(match.group(1), match.group(2)), text)
+	text = text.replace(' & ', ' &amp; ')
+	return text
+
 source = feedparser.parse(sys.argv[1])
 
 root = ElementTree.Element('rss')
@@ -65,6 +72,11 @@ for entry in source.entries:
 	item = ElementTree.SubElement(channel, 'item')
 	putback_elems(entry, item_required, item, True)
 	putback_elems(entry, item_optional, item)
+
+	r = requests.get(entry.link)
+	linked_html = ElementTree.fromstring(fix_entities(r.content))
+	linked_body = linked_html.find('body')
+	ElementTree.SubElement(item, 'description').extend(list(linked_body))
 
 ElementTree.ElementTree(root).write(sys.argv[2], 'utf-8')
 
