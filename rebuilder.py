@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import sys, time, re
+import time, re, argparse
 import feedparser, requests
 from xml.etree import ElementTree
 from htmlentitydefs import name2codepoint
@@ -53,7 +53,13 @@ def fix_entities(text):
 	text = text.replace(' & ', ' &amp; ')
 	return text
 
-source = feedparser.parse(sys.argv[1])
+argparser = argparse.ArgumentParser()
+argparser.add_argument('url', help = 'URL of the source RSS file')
+argparser.add_argument('xpath', help = 'XPath expression used to extract the relevant content from the page linked by each RSS item')
+argparser.add_argument('output', help = 'Path of the resulting RSS file')
+args = argparser.parse_args()
+
+source = feedparser.parse(args.url)
 
 root = ElementTree.Element('rss')
 root.set('version', '2.0')
@@ -77,7 +83,7 @@ for entry in source.entries:
 	linked_html = ElementTree.fromstring(fix_entities(r.content))
 
 	try:
-		content = ElementTree.tostring(linked_html.find(sys.argv[2]))
+		content = ElementTree.tostring(linked_html.find(args.xpath))
 	except AttributeError:
 		content = 'XPath expression returned no result'
 	except SyntaxError, e:
@@ -85,5 +91,5 @@ for entry in source.entries:
 
 	ElementTree.SubElement(item, 'description').text = content
 
-ElementTree.ElementTree(root).write(sys.argv[3], 'utf-8')
+ElementTree.ElementTree(root).write(args.output, 'utf-8')
 
