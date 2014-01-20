@@ -93,7 +93,9 @@ def rebuild_rss(url, xpath, output):
 
 		ElementTree.SubElement(item, 'description').text = content
 
-	ElementTree.ElementTree(root).write(output, 'utf-8')
+	with open(output, 'w') as out_file:
+		out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
+		ElementTree.ElementTree(root).write(out_file, 'utf-8')
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
