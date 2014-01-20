@@ -53,43 +53,49 @@ def fix_entities(text):
 	text = text.replace(' & ', ' &amp; ')
 	return text
 
-argparser = argparse.ArgumentParser()
-argparser.add_argument('url', help = 'URL of the source RSS file')
-argparser.add_argument('xpath', help = 'XPath expression used to extract the relevant content from the page linked by each RSS item')
-argparser.add_argument('output', help = 'Path of the resulting RSS file')
-args = argparser.parse_args()
+def get_cmdline_arguments():
+	argparser = argparse.ArgumentParser()
+	argparser.add_argument('url', help = 'URL of the source RSS file')
+	argparser.add_argument('xpath', help = 'XPath expression used to extract the relevant content from the page linked by each RSS item')
+	argparser.add_argument('output', help = 'Path of the resulting RSS file')
+	return argparser.parse_args()
 
-source = feedparser.parse(args.url)
+def rebuild_rss(url, xpath, output):
+	source = feedparser.parse(url)
 
-root = ElementTree.Element('rss')
-root.set('version', '2.0')
+	root = ElementTree.Element('rss')
+	root.set('version', '2.0')
 
-channel = ElementTree.SubElement(root, 'channel')
-putback_elems(source.feed, channel_required, channel, True)
-putback_elems(source.feed, channel_optional, channel)
+	channel = ElementTree.SubElement(root, 'channel')
+	putback_elems(source.feed, channel_required, channel, True)
+	putback_elems(source.feed, channel_optional, channel)
 
-ElementTree.SubElement(channel, 'lastBuildDate').text = time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())
-if hasattr(source.feed, 'generator'):
-	ElementTree.SubElement(channel, 'generator').text = source.feed.generator + ' & RSS Rebuilder'
-else:
-	ElementTree.SubElement(channel, 'generator').text = 'RSS Rebuilder'
+	ElementTree.SubElement(channel, 'lastBuildDate').text = time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())
+	if hasattr(source.feed, 'generator'):
+		ElementTree.SubElement(channel, 'generator').text = source.feed.generator + ' & RSS Rebuilder'
+	else:
+		ElementTree.SubElement(channel, 'generator').text = 'RSS Rebuilder'
 
-for entry in source.entries:
-	item = ElementTree.SubElement(channel, 'item')
-	putback_elems(entry, item_required, item, True)
-	putback_elems(entry, item_optional, item)
+	for entry in source.entries:
+		item = ElementTree.SubElement(channel, 'item')
+		putback_elems(entry, item_required, item, True)
+		putback_elems(entry, item_optional, item)
 
-	r = requests.get(entry.link)
-	linked_html = ElementTree.fromstring(fix_entities(r.content))
+		r = requests.get(entry.link)
+		linked_html = ElementTree.fromstring(fix_entities(r.content))
 
-	try:
-		content = ElementTree.tostring(linked_html.find(args.xpath))
-	except AttributeError:
-		content = 'XPath expression returned no result'
-	except SyntaxError, e:
-		content = 'Invalid XPath expression ({})'.format(e)
+		try:
+			content = ElementTree.tostring(linked_html.find(xpath))
+		except AttributeError:
+			content = 'XPath expression returned no result'
+		except SyntaxError, e:
+			content = 'Invalid XPath expression ({})'.format(e)
 
-	ElementTree.SubElement(item, 'description').text = content
+		ElementTree.SubElement(item, 'description').text = content
 
-ElementTree.ElementTree(root).write(args.output, 'utf-8')
+	ElementTree.ElementTree(root).write(output, 'utf-8')
+
+if __name__ == '__main__':
+	args = get_cmdline_arguments()
+	rebuild_rss(args.url, args.xpath, args.output)
 
