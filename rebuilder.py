@@ -82,10 +82,12 @@ def rebuild_rss(url, xpath, output):
 		putback_elems(entry, item_optional, item)
 
 		r = requests.get(entry.link)
-		linked_html = ElementTree.fromstring(fix_entities(r.content))
 
 		try:
+			linked_html = ElementTree.fromstring(fix_entities(r.content))
 			content = ElementTree.tostring(linked_html.find(xpath))
+		except ElementTree.ParseError, e:
+			content = 'Invalid page markup ({})'.format(e)
 		except AttributeError:
 			content = 'XPath expression returned no result'
 		except SyntaxError, e:
