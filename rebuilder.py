@@ -3,7 +3,7 @@
 import time, re, argparse
 import feedparser, requests
 from htmlentitydefs import name2codepoint
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, FeatureNotFound
 
 channel_required = [
 	'title',
@@ -59,7 +59,13 @@ def get_cmdline_arguments():
 def rebuild_rss(url, selector, output):
 	source = feedparser.parse(url)
 
-	rss = BeautifulSoup('<rss version="2.0" />').rss
+	try:
+		soup = BeautifulSoup('<rss version="2.0" />', 'xml')
+		rss = soup.rss
+		has_lxml = True
+	except FeatureNotFound:
+		rss = BeautifulSoup('<rss version="2.0" />').rss
+		has_lxml = False
 
 	channel = Tag(name = 'channel')
 	rss.append(channel)
@@ -82,7 +88,7 @@ def rebuild_rss(url, selector, output):
 		putback_elems(entry, item_optional, item)
 
 		r = requests.get(entry.link)
-		linked_html = BeautifulSoup(r.content)
+		linked_html = BeautifulSoup(r.content, 'lxml') if has_lxml else BeautifulSoup(r.content)
 		content = reduce(lambda s, tag: s + repr(tag), linked_html.select(selector), '')
 
 		desc = Tag(name = 'description')
@@ -90,8 +96,11 @@ def rebuild_rss(url, selector, output):
 		item.append(desc)
 
 	with open(output, 'w') as out_file:
-		out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
-		out_file.write(str(rss))
+		if has_lxml:
+			out_file.write(str(soup))
+		else:
+			out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
+			out_file.write(str(rss))
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
