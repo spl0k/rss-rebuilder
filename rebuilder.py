@@ -4,6 +4,7 @@ import time, re, argparse
 import feedparser, requests
 from xml.etree import ElementTree
 from htmlentitydefs import name2codepoint
+from bs4 import BeautifulSoup
 
 channel_required = [
 	'title',
@@ -47,20 +48,14 @@ def putback_elems(source, elems, xml_elem, required = False):
 		if required or hasattr(source, attr):
 			ElementTree.SubElement(xml_elem, tag).text = getattr(source, attr)
 
-def fix_entities(text):
-	text = re.sub('&([a-z][a-z0-9]+);', lambda match: '&#{};'.format(name2codepoint[match.group(1)]), text)
-	text = re.sub('&([_a-z0-9]+)([^;])', lambda match: '&amp;{}{}'.format(match.group(1), match.group(2)), text)
-	text = text.replace(' & ', ' &amp; ')
-	return text
-
 def get_cmdline_arguments():
 	argparser = argparse.ArgumentParser()
 	argparser.add_argument('url', help = 'URL of the source RSS file')
-	argparser.add_argument('xpath', help = 'XPath expression used to extract the relevant content from the page linked by each RSS item')
+	argparser.add_argument('selector', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item')
 	argparser.add_argument('output', help = 'Path of the resulting RSS file')
 	return argparser.parse_args()
 
-def rebuild_rss(url, xpath, output):
+def rebuild_rss(url, selector, output):
 	source = feedparser.parse(url)
 
 	root = ElementTree.Element('rss')
@@ -82,16 +77,8 @@ def rebuild_rss(url, xpath, output):
 		putback_elems(entry, item_optional, item)
 
 		r = requests.get(entry.link)
-
-		try:
-			linked_html = ElementTree.fromstring(fix_entities(r.content))
-			content = ElementTree.tostring(linked_html.find(xpath))
-		except ElementTree.ParseError, e:
-			content = 'Invalid page markup ({})'.format(e)
-		except AttributeError:
-			content = 'XPath expression returned no result'
-		except SyntaxError, e:
-			content = 'Invalid XPath expression ({})'.format(e)
+		linked_html = BeautifulSoup(r.content)
+		content = reduce(lambda s, tag: s + repr(tag), linked_html.select(selector), '')
 
 		ElementTree.SubElement(item, 'description').text = content
 
@@ -101,5 +88,5 @@ def rebuild_rss(url, xpath, output):
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
-	rebuild_rss(args.url, args.xpath, args.output)
+	rebuild_rss(args.url, args.selector, args.output)
 

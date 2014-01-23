@@ -13,4 +13,5 @@ Requirements
 * argparse (included in Python starting from 2.7)
 * feedparser
 * requests
+* Beautiful Soup 4
 
