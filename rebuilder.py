@@ -2,9 +2,8 @@
 
 import time, re, argparse
 import feedparser, requests
-from xml.etree import ElementTree
 from htmlentitydefs import name2codepoint
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 channel_required = [
 	'title',
@@ -46,7 +45,9 @@ def putback_elems(source, elems, xml_elem, required = False):
 			tag = elem
 
 		if required or hasattr(source, attr):
-			ElementTree.SubElement(xml_elem, tag).text = getattr(source, attr)
+			e = Tag(name = tag)
+			e.string = getattr(source, attr)
+			xml_elem.append(e)
 
 def get_cmdline_arguments():
 	argparser = argparse.ArgumentParser()
@@ -58,21 +59,25 @@ def get_cmdline_arguments():
 def rebuild_rss(url, selector, output):
 	source = feedparser.parse(url)
 
-	root = ElementTree.Element('rss')
-	root.set('version', '2.0')
+	rss = BeautifulSoup('<rss version="2.0" />').rss
 
-	channel = ElementTree.SubElement(root, 'channel')
+	channel = Tag(name = 'channel')
+	rss.append(channel)
 	putback_elems(source.feed, channel_required, channel, True)
 	putback_elems(source.feed, channel_optional, channel)
 
-	ElementTree.SubElement(channel, 'lastBuildDate').text = time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())
-	if hasattr(source.feed, 'generator'):
-		ElementTree.SubElement(channel, 'generator').text = source.feed.generator + ' & RSS Rebuilder'
-	else:
-		ElementTree.SubElement(channel, 'generator').text = 'RSS Rebuilder'
+	build_date = Tag(name = 'lastBuildDate')
+	build_date.string = time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())
+	channel.append(build_date)
+
+	generator = Tag(name = 'generator')
+	generator.string = source.feed.generator + ' & RSS Rebuilder' if hasattr(source.feed, 'generator') else 'RSS Rebuilder'
+	channel.append(generator)
 
 	for entry in source.entries:
-		item = ElementTree.SubElement(channel, 'item')
+		item = Tag(name = 'item')
+		channel.append(item)
+
 		putback_elems(entry, item_required, item, True)
 		putback_elems(entry, item_optional, item)
 
@@ -80,11 +85,13 @@ def rebuild_rss(url, selector, output):
 		linked_html = BeautifulSoup(r.content)
 		content = reduce(lambda s, tag: s + repr(tag), linked_html.select(selector), '')
 
-		ElementTree.SubElement(item, 'description').text = content
+		desc = Tag(name = 'description')
+		desc.string = content
+		item.append(desc)
 
 	with open(output, 'w') as out_file:
 		out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
-		ElementTree.ElementTree(root).write(out_file, 'utf-8')
+		out_file.write(str(rss))
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
