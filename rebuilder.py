@@ -3,7 +3,11 @@
 import time, re, argparse
 import feedparser, requests
 from htmlentitydefs import name2codepoint
-from bs4 import BeautifulSoup, Tag, FeatureNotFound
+from bs4 import BeautifulSoup, Tag
+try:
+	from bs4 import FeatureNotFound
+except ImportError:
+	FeatureNotFound = ValueError
 
 channel_required = [
 	'title',
