@@ -58,9 +58,10 @@ def get_cmdline_arguments():
 	argparser.add_argument('url', help = 'URL of the source RSS file')
 	argparser.add_argument('selector', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item')
 	argparser.add_argument('output', help = 'Path of the resulting RSS file')
+	argparser.add_argument('-p', '--pretty', action = 'store_true', help = 'Specify that the output should be prettyfied')
 	return argparser.parse_args()
 
-def rebuild_rss(url, selector, output):
+def rebuild_rss(url, selector, output, pretty = False):
 	source = feedparser.parse(url)
 
 	try:
@@ -100,13 +101,14 @@ def rebuild_rss(url, selector, output):
 		item.append(desc)
 
 	with open(output, 'w') as out_file:
+		out_func = (lambda x: x.prettify()) if pretty else str
 		if has_lxml:
-			out_file.write(str(soup))
+			out_file.write(out_func(soup))
 		else:
 			out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
-			out_file.write(str(rss))
+			out_file.write(out_func(rss))
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
-	rebuild_rss(args.url, args.selector, args.output)
+	rebuild_rss(args.url, args.selector, args.output, args.pretty)
 
