@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import time, re, argparse
+import time, re, argparse, sys
 import feedparser, requests
 from htmlentitydefs import name2codepoint
 from bs4 import BeautifulSoup, Tag
@@ -57,7 +57,7 @@ def get_cmdline_arguments():
 	argparser = argparse.ArgumentParser()
 	argparser.add_argument('url', help = 'URL of the source RSS file')
 	argparser.add_argument('selector', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item')
-	argparser.add_argument('output', help = 'Path of the resulting RSS file')
+	argparser.add_argument('output', help = 'Path of the resulting RSS file. Use "-" for stdout')
 	argparser.add_argument('-p', '--pretty', action = 'store_true', help = 'Specify that the output should be prettyfied')
 	return argparser.parse_args()
 
@@ -100,13 +100,20 @@ def rebuild_rss(url, selector, output, pretty = False):
 		desc.string = content
 		item.append(desc)
 
-	with open(output, 'w') as out_file:
-		out_func = (lambda x: x.prettify()) if pretty else str
-		if has_lxml:
-			out_file.write(out_func(soup))
-		else:
-			out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
-			out_file.write(out_func(rss))
+	out_func = (lambda x: x.prettify()) if pretty else str
+	if output == '-':
+		out_file = sys.stdout
+		close_file = lambda: None
+	else:
+		out_file = open(output, 'w')
+		close_file = out_file.close
+
+	if has_lxml:
+		out_file.write(out_func(soup))
+	else:
+		out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
+		out_file.write(out_func(rss))
+	close_file()
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
