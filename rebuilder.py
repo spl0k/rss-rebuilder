@@ -93,14 +93,14 @@ def rebuild_rss(url, selector, output, pretty = False):
 		putback_elems(entry, item_optional, item)
 
 		r = requests.get(entry.link)
-		linked_html = BeautifulSoup(r.content, 'lxml') if has_lxml else BeautifulSoup(r.content)
-		content = reduce(lambda s, tag: s + repr(tag), linked_html.select(selector), '')
+		linked_html = BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)
+		content = reduce(lambda s, tag: s + unicode(tag), linked_html.select(selector), '')
 
 		desc = Tag(name = 'description')
 		desc.string = content
 		item.append(desc)
 
-	out_func = (lambda x: x.prettify()) if pretty else str
+	out_func = lambda x: (x.prettify() if pretty else unicode(x)).encode('utf-8')
 	if output == '-':
 		out_file = sys.stdout
 		close_file = lambda: None
@@ -111,8 +111,9 @@ def rebuild_rss(url, selector, output, pretty = False):
 	if has_lxml:
 		out_file.write(out_func(soup))
 	else:
-		out_file.write('<?xml version="1.0" encoding="UTF-8" ?>')
+		out_file.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
 		out_file.write(out_func(rss))
+	out_file.write('\n')
 	close_file()
 
 if __name__ == '__main__':
