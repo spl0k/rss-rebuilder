@@ -56,12 +56,12 @@ def putback_elems(source, elems, xml_elem, required = False):
 def get_cmdline_arguments():
 	argparser = argparse.ArgumentParser()
 	argparser.add_argument('url', help = 'URL of the source RSS file')
-	argparser.add_argument('selector', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item')
 	argparser.add_argument('output', help = 'Path of the resulting RSS file. Use "-" for stdout')
+	argparser.add_argument('selector', nargs = '+', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item. If more than one is provided, their results are concatened')
 	argparser.add_argument('-p', '--pretty', action = 'store_true', help = 'Specify that the output should be prettyfied')
 	return argparser.parse_args()
 
-def rebuild_rss(url, selector, output, pretty = False):
+def rebuild_rss(url, output, selectors, pretty = False):
 	source = feedparser.parse(url)
 
 	try:
@@ -94,7 +94,10 @@ def rebuild_rss(url, selector, output, pretty = False):
 
 		r = requests.get(entry.link)
 		linked_html = BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)
-		content = reduce(lambda s, tag: s + unicode(tag), linked_html.select(selector), '')
+
+		content = ''
+		for selector in selectors:
+			content = reduce(lambda s, tag: s + unicode(tag), linked_html.select(selector), content)
 
 		desc = Tag(name = 'description')
 		desc.string = content
@@ -118,5 +121,5 @@ def rebuild_rss(url, selector, output, pretty = False):
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
-	rebuild_rss(args.url, args.selector, args.output, args.pretty)
+	rebuild_rss(args.url, args.output, args.selector, args.pretty)
 
