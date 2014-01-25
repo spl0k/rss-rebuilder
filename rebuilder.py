@@ -2,7 +2,6 @@
 
 import time, re, argparse, sys
 import feedparser, requests
-from htmlentitydefs import name2codepoint
 from bs4 import BeautifulSoup, Tag
 try:
 	from bs4 import FeatureNotFound
