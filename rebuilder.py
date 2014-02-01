@@ -58,9 +58,24 @@ def get_cmdline_arguments():
 	argparser.add_argument('output', help = 'Path of the resulting RSS file. Use "-" for stdout')
 	argparser.add_argument('selector', nargs = '+', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item. If more than one is provided, their results are concatened')
 	argparser.add_argument('-p', '--pretty', action = 'store_true', help = 'Specify that the output should be prettyfied')
+	argparser.add_argument('-r', '--replace-url', nargs = 2, help = 'Pattern and substitution used to replace URLs in img and a elements')
 	return argparser.parse_args()
 
-def rebuild_rss(url, output, selectors, pretty = False):
+def replace_urls(tags, regexp, repl):
+	for tag in tags:
+		if tag.name == 'a':
+			tag['href'] = regexp.sub(repl, tag['href'])
+		elif tag.name == 'img':
+			tag['src'] = regexp.sub(repl, tag['src'])
+
+		for a in tag.find_all('a'):
+			a['href'] = regexp.sub(repl, a['href'])
+		for img in tag.find_all('img'):
+			img['src'] = regexp.sub(repl, img['src'])
+
+	return tags
+
+def rebuild_rss(url, output, selectors, replace = None, pretty = False):
 	source = feedparser.parse(url)
 
 	try:
@@ -84,6 +99,9 @@ def rebuild_rss(url, output, selectors, pretty = False):
 	generator.string = source.feed.generator + ' & RSS Rebuilder' if hasattr(source.feed, 'generator') else 'RSS Rebuilder'
 	channel.append(generator)
 
+	if replace:
+		regexp = re.compile(replace[0])
+
 	for entry in source.entries:
 		item = Tag(name = 'item')
 		channel.append(item)
@@ -96,7 +114,11 @@ def rebuild_rss(url, output, selectors, pretty = False):
 
 		content = ''
 		for selector in selectors:
-			content = reduce(lambda s, tag: s + unicode(tag), linked_html.select(selector), content)
+			tags = linked_html.select(selector)
+			if replace:
+				tags = replace_urls(tags, regexp, replace[1])
+
+			content = reduce(lambda s, tag: s + unicode(tag), tags, content)
 
 		desc = Tag(name = 'description')
 		desc.string = content
@@ -120,5 +142,5 @@ def rebuild_rss(url, output, selectors, pretty = False):
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
-	rebuild_rss(args.url, args.output, args.selector, args.pretty)
+	rebuild_rss(args.url, args.output, args.selector, args.replace_url, args.pretty)
 
