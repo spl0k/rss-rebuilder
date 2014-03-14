@@ -59,6 +59,7 @@ def get_cmdline_arguments():
 	argparser.add_argument('selector', nargs = '+', help = 'CSS selector used to extract the relevant content from the page linked by each RSS item. If more than one is provided, their results are concatened')
 	argparser.add_argument('-p', '--pretty', action = 'store_true', help = 'Specify that the output should be prettyfied')
 	argparser.add_argument('-r', '--replace-url', nargs = 2, help = 'Pattern and substitution used to replace URLs in img and a elements')
+	argparser.add_argument('--raw', action = 'store_true')
 	return argparser.parse_args()
 
 def replace_urls(tags, regexp, repl):
@@ -75,7 +76,7 @@ def replace_urls(tags, regexp, repl):
 
 	return tags
 
-def rebuild_rss(url, output, selectors, replace = None, pretty = False):
+def rebuild_rss(url, output, selectors, replace = None, pretty = False, raw = False):
 	source = feedparser.parse(url)
 
 	try:
@@ -110,7 +111,8 @@ def rebuild_rss(url, output, selectors, replace = None, pretty = False):
 		putback_elems(entry, item_optional, item)
 
 		r = requests.get(entry.link)
-		linked_html = BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)
+		html = r.content if raw else r.text
+		linked_html = BeautifulSoup(html, 'lxml') if has_lxml else BeautifulSoup(html)
 
 		content = ''
 		for selector in selectors:
@@ -142,5 +144,5 @@ def rebuild_rss(url, output, selectors, replace = None, pretty = False):
 
 if __name__ == '__main__':
 	args = get_cmdline_arguments()
-	rebuild_rss(args.url, args.output, args.selector, args.replace_url, args.pretty)
+	rebuild_rss(args.url, args.output, args.selector, args.replace_url, args.pretty, args.raw)
 
