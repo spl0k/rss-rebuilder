@@ -38,6 +38,7 @@ def build_rss(url, list_selector, item_selector, output, pretty = False):
 
 	item_urls = list_html.select(list_selector)
 	for item_url in map(lambda i: i['href'], item_urls):
+		item_url = urlparse.urljoin(url, item_url)
 		r = requests.get(item_url)
 		item_html = (BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)).html
 
@@ -66,7 +67,7 @@ def build_rss(url, list_selector, item_selector, output, pretty = False):
 if __name__ == '__main__':
 	args = get_cmdline_args()
 
-	import feedparser, requests
+	import feedparser, requests, urlparse
 	from bs4 import BeautifulSoup, Tag
 	try:
 		from bs4 import FeatureNotFound
