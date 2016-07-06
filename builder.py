@@ -1,12 +1,6 @@
 # coding: utf-8
 
 import time, argparse, sys
-import feedparser, requests
-from bs4 import BeautifulSoup, Tag
-try:
-	from bs4 import FeatureNotFound
-except ImportError:
-	FeatureNotFound = ValueError
 
 def get_cmdline_args():
 	argparser = argparse.ArgumentParser()
@@ -71,5 +65,13 @@ def build_rss(url, list_selector, item_selector, output, pretty = False):
 
 if __name__ == '__main__':
 	args = get_cmdline_args()
+
+	import feedparser, requests
+	from bs4 import BeautifulSoup, Tag
+	try:
+		from bs4 import FeatureNotFound
+	except ImportError:
+		FeatureNotFound = ValueError
+
 	build_rss(args.url, args.list_selector, args.item_selector, args.output, args.pretty)
 
