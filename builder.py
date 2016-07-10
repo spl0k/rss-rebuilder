@@ -9,6 +9,7 @@ def get_cmdline_args():
 	argparser.add_argument('item_selector', help = 'CSS selector used to extract the relevant content from the URL the previous selector returned.')
 	argparser.add_argument('output', help = 'Path of the resulting RSS file. Use "-" for stdout')
 	argparser.add_argument('-p', '--pretty', action = 'store_true', help = 'Specify that the output should be prettyfied')
+	argparser.add_argument('--ignored-query-params', nargs = '*', default = [], help = 'Query parameters to remove when generating the links')
 	return argparser.parse_args()
 
 def new_tag(tag, string):
@@ -16,7 +17,7 @@ def new_tag(tag, string):
 	t.string = string
 	return t
 
-def build_rss(url, list_selector, item_selector, output, pretty = False):
+def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = False):
 	try:
 		soup = BeautifulSoup('<rss version="2.0" />', 'xml')
 		rss = soup.rss
@@ -39,6 +40,16 @@ def build_rss(url, list_selector, item_selector, output, pretty = False):
 	item_urls = list_html.select(list_selector)
 	for item_url in map(lambda i: i['href'], item_urls):
 		item_url = urlparse.urljoin(url, item_url)
+		parsed = urlparse.urlparse(item_url)
+		query_params = urlparse.parse_qsl(parsed.query)
+		item_url = urlparse.urlunparse((
+			parsed.scheme,
+			parsed.netloc,
+			parsed.path,
+			parsed.params,
+			'&'.join([ k+'='+v for k, v in query_params if k not in ignored_qp ]),
+			parsed.fragment))
+
 		r = requests.get(item_url)
 		item_html = (BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)).html
 
@@ -74,5 +85,5 @@ if __name__ == '__main__':
 	except ImportError:
 		FeatureNotFound = ValueError
 
-	build_rss(args.url, args.list_selector, args.item_selector, args.output, args.pretty)
+	build_rss(args.url, args.list_selector, args.item_selector, args.ignored_query_params, args.output, args.pretty)
 
