@@ -38,7 +38,7 @@ item_optional = [
 	('published', 'pubDate')
 ] # enclosure, source
 
-def putback_elems(source, elems, xml_elem, required = False):
+def putback_elems(source, elems, xml_elem):
 	for elem in elems:
 		if isinstance(elem, tuple):
 			attr = elem[0]
@@ -47,7 +47,7 @@ def putback_elems(source, elems, xml_elem, required = False):
 			attr = elem
 			tag = elem
 
-		if required or hasattr(source, attr):
+		if hasattr(source, attr):
 			e = Tag(name = tag)
 			e.string = getattr(source, attr)
 			xml_elem.append(e)
@@ -89,7 +89,7 @@ def rebuild_rss(url, output, selectors, replace = None, pretty = False, raw = Fa
 
 	channel = Tag(name = 'channel')
 	rss.append(channel)
-	putback_elems(source.feed, channel_required, channel, True)
+	putback_elems(source.feed, channel_required, channel)
 	putback_elems(source.feed, channel_optional, channel)
 
 	build_date = Tag(name = 'lastBuildDate')
@@ -107,7 +107,7 @@ def rebuild_rss(url, output, selectors, replace = None, pretty = False, raw = Fa
 		item = Tag(name = 'item')
 		channel.append(item)
 
-		putback_elems(entry, item_required, item, True)
+		putback_elems(entry, item_required, item)
 		putback_elems(entry, item_optional, item)
 
 		r = requests.get(entry.link)
