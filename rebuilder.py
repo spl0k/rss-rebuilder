@@ -1,7 +1,8 @@
 # coding: utf-8
 
-import time, re, argparse, sys
+import time, re, argparse, sys, os
 import feedparser, requests
+from functools import reduce
 from bs4 import BeautifulSoup, Tag
 try:
     from bs4 import FeatureNotFound
@@ -120,17 +121,20 @@ def rebuild_rss(url, output, selectors, replace = None, pretty = False, raw = Fa
             if replace:
                 tags = replace_urls(tags, regexp, replace[1])
 
-            content = reduce(lambda s, tag: s + unicode(tag), tags, content)
+            content = reduce(lambda s, tag: s + str(tag), tags, content)
 
         desc = Tag(name = 'description')
         desc.string = content
         item.append(desc)
 
-    out_func = lambda x: (x.prettify() if pretty else unicode(x)).encode('utf-8')
+    out_func = lambda x: (x.prettify() if pretty else str(x))
     if output == '-':
         out_file = sys.stdout
         close_file = lambda: None
     else:
+        dirname = os.path.dirname(output)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         out_file = open(output, 'w')
         close_file = out_file.close
 

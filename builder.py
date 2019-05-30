@@ -1,6 +1,13 @@
 # coding: utf-8
 
-import time, argparse, sys
+import time, argparse, sys, os
+import feedparser, requests
+import urllib.parse
+from bs4 import BeautifulSoup, Tag
+try:
+    from bs4 import FeatureNotFound
+except ImportError:
+    FeatureNotFound = ValueError
 
 def get_cmdline_args():
     argparser = argparse.ArgumentParser()
@@ -39,10 +46,10 @@ def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = Fa
 
     item_urls = list_html.select(list_selector)
     for item_url in map(lambda i: i['href'], item_urls):
-        item_url = urlparse.urljoin(url, item_url)
-        parsed = urlparse.urlparse(item_url)
-        query_params = urlparse.parse_qsl(parsed.query)
-        item_url = urlparse.urlunparse((
+        item_url = urllib.parse.urljoin(url, item_url)
+        parsed = urllib.parse.urlparse(item_url)
+        query_params = urllib.parse.parse_qsl(parsed.query)
+        item_url = urllib.parse.urlunparse((
             parsed.scheme,
             parsed.netloc,
             parsed.path,
@@ -59,11 +66,14 @@ def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = Fa
         item.append(new_tag('description', str(item_html.select(item_selector)[0])))
         channel.append(item)
 
-    out_func = lambda x: (x.prettify() if pretty else unicode(x)).encode('utf-8')
+    out_func = lambda x: (x.prettify() if pretty else str(x))
     if output == '-':
         out_file = sys.stdout
         close_file = lambda: None
     else:
+        dirname = os.path.dirname(output)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         out_file = open(output, 'w')
         close_file = out_file.close
 
@@ -77,13 +87,5 @@ def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = Fa
 
 if __name__ == '__main__':
     args = get_cmdline_args()
-
-    import feedparser, requests, urlparse
-    from bs4 import BeautifulSoup, Tag
-    try:
-        from bs4 import FeatureNotFound
-    except ImportError:
-        FeatureNotFound = ValueError
-
     build_rss(args.url, args.list_selector, args.item_selector, args.ignored_query_params, args.output, args.pretty)
 
