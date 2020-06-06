@@ -33,7 +33,7 @@ def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = Fa
         rss = BeautifulSoup('<rss version="2.0" />').rss
         has_lxml = False
 
-    r = requests.get(url)
+    r = requests.get(url, headers={"User-Agent": "RSS Builder"})
     list_html = (BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)).html
 
     channel = Tag(name = 'channel')
@@ -57,7 +57,7 @@ def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = Fa
             '&'.join([ k+'='+v for k, v in query_params if k not in ignored_qp ]),
             parsed.fragment))
 
-        r = requests.get(item_url)
+        r = requests.get(item_url, headers={"User-Agent": "RSS Builder"})
         item_html = (BeautifulSoup(r.text, 'lxml') if has_lxml else BeautifulSoup(r.text)).html
 
         item = Tag(name = 'item')
