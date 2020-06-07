@@ -35,7 +35,10 @@ def format_date(ts: time.struct_time) -> str:
 
 
 def build(search: str, output: str, pretty: bool) -> None:
-    rss = BeautifulSoup('<rss version="2.0" />').rss
+    try:
+        rss = BeautifulSoup('<rss version="2.0" />', "xml").rss
+    except FeatureNotFound:
+        rss = BeautifulSoup('<rss version="2.0" />', "html.parser").rss
 
     channel = Tag(name="channel")
     rss.append(channel)
@@ -50,20 +53,21 @@ def build(search: str, output: str, pretty: bool) -> None:
 
     r = requests.get(f"https://apibay.org/q.php?q={search}")
 
-    for result in r.json():
+    for result in sorted(r.json(), key=lambda e: e["added"], reverse=True):
         r = requests.get(f"https://apibay.org/t.php?id={result['id']}")
         details = r.json()
 
         description = f'<a href="magnet:?xt=urn:btih:{details["info_hash"]}">Magnet</a>'
         description += f"<pre>{details['descr']}</pre>"
 
-        itemurl = f"https://thepiratebay.org/description.php?id={result['id']}"
+        itemurl = f"https://thepiratebay.org/description.php?id={details['id']}"
 
         item = Tag(name="item")
-        item.append(new_tag("title", result["name"]))
+        item.append(new_tag("title", details["name"]))
         item.append(new_tag("link", itemurl))
         item.append(new_tag("description", description))
         item.append(new_tag("pubDate", format_date(time.gmtime(details["added"]))))
+        item.append(new_tag("author", details["username"]))
         channel.append(item)
 
     out_func = lambda x: (x.prettify() if pretty else str(x))
