@@ -6,6 +6,7 @@ import time
 import urllib.parse
 
 from bs4 import BeautifulSoup, Tag, FeatureNotFound
+from json.decoder import JSONDecodeError
 
 
 def get_cmdline_args():
@@ -54,20 +55,23 @@ def build(search: str, output: str, pretty: bool) -> None:
     r = requests.get(f"https://apibay.org/q.php?q={search}")
 
     for result in sorted(r.json(), key=lambda e: e["added"], reverse=True):
-        r = requests.get(f"https://apibay.org/t.php?id={result['id']}")
-        details = r.json()
+        description = f'<a href="magnet:?xt=urn:btih:{result["info_hash"]}">Magnet</a>'
+        try:
+            r = requests.get(f"https://apibay.org/t.php?id={result['id']}")
+            details = r.json()
 
-        description = f'<a href="magnet:?xt=urn:btih:{details["info_hash"]}">Magnet</a>'
-        description += f"<pre>{details['descr']}</pre>"
+            description += f"<pre>{details['descr']}</pre>"
+        except JSONDecodeError:
+            pass
 
-        itemurl = f"https://thepiratebay.org/description.php?id={details['id']}"
+        itemurl = f"https://thepiratebay.org/description.php?id={result['id']}"
 
         item = Tag(name="item")
-        item.append(new_tag("title", details["name"]))
+        item.append(new_tag("title", result["name"]))
         item.append(new_tag("link", itemurl))
         item.append(new_tag("description", description))
-        item.append(new_tag("pubDate", format_date(time.gmtime(details["added"]))))
-        item.append(new_tag("author", details["username"]))
+        item.append(new_tag("pubDate", format_date(time.gmtime(int(result["added"])))))
+        item.append(new_tag("author", result["username"]))
         channel.append(item)
 
     out_func = lambda x: (x.prettify() if pretty else str(x))

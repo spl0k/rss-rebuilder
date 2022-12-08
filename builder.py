@@ -63,7 +63,8 @@ def build_rss(url, list_selector, item_selector, ignored_qp, output, pretty = Fa
         item = Tag(name = 'item')
         item.append(new_tag('title', item_html.head.title.string))
         item.append(new_tag('link', item_url))
-        item.append(new_tag('description', str(item_html.select(item_selector)[0])))
+        content = map(str, item_html.select(item_selector))
+        item.append(new_tag('description', "<br/>".join(content)))
         channel.append(item)
 
     out_func = lambda x: (x.prettify() if pretty else str(x))
